@@ -3,7 +3,8 @@ DetectHiddenWindows true
 
 exe := "R:\SudokuDots5.exe"
 
-params := "NnMqwQSUgIsN -v 11 -d 60 -e 50 -s 0 -x 0"
+params := "GMlhjzLrVBqW -v 11 -d 50 -e 60 -s 1 -k2 50 -kr 46 -lg 2"
+; params := "NnMqwQSUgIsN -v 11 -d 60 -e 50 -s 1 -x 0"
 ; params := "OiLkdtEownzD -v 11 -d 30 -e 0 -k1 20 -ka 44 -k2 60 -kw 46 -k3 60 -kt 46 -lg 2 -gv 3 -gx 28"
 ; params := "StQwIZSLfguL -v 11 -d 30 -e 60 -k1 30 -ka 34 -k2 50 -kr 46 -k3 50 -kt 46 -bd 50 -bk 60 -b3 50 -b4 50 -lg 1 -gv 4 -x 1"
 ; params := "Wounstacn -v 11 -d 50 -e 50 -gn 5"
@@ -38,7 +39,7 @@ RunWaitOne(tries, idx) {
 	Loop {
 		cnt++
 		Sleep 20
-	} Until A_Clipboard || cnt == 1200
+	} Until A_Clipboard || cnt == timeout.value
 	WinClose ("ahk_pid " runPID)
 	res := A_Clipboard
 	runPID := 0
@@ -188,15 +189,16 @@ grabScan() {
 			for i, val in idx {
 				if(strlen(val) > 1) {
 					idx :=  StrSplit(val, " ")[1]
-					if(RegExMatch(val, "\[(.*?)\]", &score))
-						scanOutput2.Add("", idx, RegExMatch(score[1], "^-?\d+", &match) ? match[0] : "",
-												 RegExMatch(score[1], ",s(\d+)", &match) ? match[1] : "", 
-												 RegExMatch(score[1], " (\D+)", &match) ? match[1] : "")				
-						; scanOutput2.Add("", idx, RegExMatch(score[1], "^\d+", &match) ? match[0] : "",
-												 ; RegExMatch(score[1], ",s(\d+)", &match) ? match[1] : "", 
-												 ; RegExMatch(score[1], " (\D+)", &match) ? match[1] : "")
-					if(RegExMatch(val, "\#(.*?)\#", &cand))
-						scanOutput3.Add("", idx, cand[1])
+					if(RegExMatch(val, "\[(.*?)\]", &score)) {
+						_score := RegExMatch(score[1], "^-?\d+", &match) ? match[0] : ""
+						_sum := RegExMatch(score[1], ",s(\d+)", &match) ? match[1] : ""
+						_extra := RegExMatch(score[1], " (\D+)", &match) ? match[1] : ""
+					}
+					if(RegExMatch(val, "\#(.*?)\#", &cand)) {
+						scanOutput3.Add("", idx, cand[1] . " [" . _score . ",s" . _sum . " " . _extra . "]")
+					} else if(RegExMatch(val, "\[(.*?)\]", &score)) {
+						scanOutput2.Add("", idx, _score, _sum, _extra)				
+					}
 					if(InStr(val, "V") && InStr(val, "]"))
 						scanOutput3.Add("", idx, "V")
 				}
@@ -404,17 +406,10 @@ ListViewClick(LV, Row) {
     indexList.Delete()
     indexList.Add(items)
 	Solved := 0
-	
-/*     ; Get all items from ListBox
-    items := ControlGetItems(indexList)
-	items.push(LV.GetText(Row, 1))
-	
-    ; Sort the array
-    items := SortArray(items)
-    
-    ; Clear and re-add sorted items
-    indexList.Delete()
-    indexList.Add(items) */
+}
+
+ListViewContextMenu(LV, Item, IsRightClick, X, Y) {
+	A_Clipboard := LV.GetText(Item, 2)
 }
 
 ListBoxClick(*) {
@@ -442,10 +437,10 @@ Loop 9 {
 }
 
 AddControls([" v.11.Variant.", " d.50.Dots.Percent.", " e.50.Extended.Percent.", " s.1.First Digit.0 / 1"])
-AddControls(["k1.100.Quantity.Percent", "ka.44.Arrow Sum.", "kb.44.Between.", "kp.44.Split Pea.", "kq.44.Product Sum.", "kl.44.Lockout."])
+AddControls(["k1.100.Quantity.Percent", "ka.44.Arrow Sum.", "kb.44.Between.", "kp.44.Split Pea.", "kq.44.Product Sum.", "kl.44.Lockout.", "ki.44.Index."])
 AddControls(["k2.100.Quantity.Percent", "kr.44.Renban.", "kw.44.German Whisper.", "kd.44.Dutch Whisper.", 
-			"ky.44.Parity.", "km.44.Modular." , "ke.44.Entropy.", "kz.44.Zipper."])
-AddControls(["", "ks.44.Region Sum.", "kn.44.Nabner.", "kx.44.Ten.", "ki.44.Index." , "kf.44.Anti-Factor."])
+			"ky.44.Parity.", "km.44.Modular." , "ke.44.Entropy."])
+AddControls(["", "kz.44.Zipper.", "ks.44.Region Sum.", "kn.44.Nabner.", "kx.44.Ten.", "kf.44.Anti-Factor."])
 AddControls(["k3.100.Quantity.Percent.", "kt.44.Thermo."])
 AddControls(["lr.00000.Renban.DAaBbCc.", "lw.00000.German Whisper.DAaBbCc.", "ld.00000.Dutch Whisper.DAaBbCc.",
 			"lp.00000.Parity.DAaBbCc.", "lm.00000.Modular.DAaBbCc.", "le.00000.Entropy.DAaBbCc.",
@@ -454,7 +449,7 @@ AddControls(["bd.100.Dots.Quantity.", "bk.100.Kropki.Quantity.", "bx.100.X.Quant
 			"b2.100.Cage 2.Quantity.", "b3.100.Cage 3.Quantity.", "b4.100.Cage 4.Quantity.", 
 			"b5.100.Cage 5.Quantity.", "b6.100.Cage 6.Quantity.", "b7.100.Cage 7.Quantity."])
 AddControls(["cd.3.Diagonal.1=pos, 2=neg", "cj.1.Disjoint.0 / 1", "ck.12.Fairy.XY", "cc.1.Consecutive.0 / 1", 
-			"ce.1.Entropy.1 / 2", "cm.1.Modular.1 / 2", "cs.13.Sum.Sum", "cx.314.Row Sequence.xyz",
+			"ce.1.Entropy.1 / 2", "cm.1.Modular.1 / 2", "cs.13.Sum.Sum", "cx.654.Row Sequence.xyz",
 			"cy.159.Col Sequence.xyz", "ca.4.Adjacent.abcd or n"])
 AddControls(["lg.0.Light.Quantity.", "gn.0.Givens.Quantity.", "gv.6.Given V.Min Quantity.", "gx.25.Given X.Min Quantity.",
 			" a..Remove Canditate.nAR"])
@@ -470,6 +465,8 @@ paramSeed.OnEvent("Click", hParamSeed)
 myGui.Add("Text", "ys", "Tries:")
 slider := MyGui.Add("Slider", "ys vMySlider", 4)
 slider.Opt("Range1-" . tries.length)
+myGui.Add("Text", "ys", "Timeout:")
+timeout := myGui.Add("Edit", "ys w30", "1200")
 
 
 scanOutput1 := myGui.Add("Text", "x10 Section w50 h20 BackgroundWhite Border")
@@ -493,6 +490,7 @@ scanOutput3 := myGui.Add("ListView", "ys w240 h120", ["Index", "Candidates"])
 scanOutput3.ModifyCol(1, "Integer Left")
 scanOutput3.ModifyCol(2, 200)
 scanOutput3.OnEvent("Click", ListViewClick)
+scanOutput3.OnEvent("ContextMenu", ListViewContextMenu)
 indexList := myGui.Add("ListBox", "ys w100 h120")
 indexList.OnEvent("Focus", ListBoxClick)
 
