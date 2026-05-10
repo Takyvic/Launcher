@@ -1,9 +1,9 @@
 #SingleInstance
 DetectHiddenWindows true
 
-exe := "R:\SudokuDots5.exe"
+exe := "\SudokuDots5.exe"
 
-params := "GMlhjzLrVBqW -v 11 -d 50 -e 60 -s 1 -k2 50 -kr 46 -lg 2"
+params := "PAaoojgKcNtY -v 11 -d 45 -e 50 -s 1 -gs 4 -x 0"
 ; params := "NnMqwQSUgIsN -v 11 -d 60 -e 50 -s 1 -x 0"
 ; params := "OiLkdtEownzD -v 11 -d 30 -e 0 -k1 20 -ka 44 -k2 60 -kw 46 -k3 60 -kt 46 -lg 2 -gv 3 -gx 28"
 ; params := "StQwIZSLfguL -v 11 -d 30 -e 60 -k1 30 -ka 34 -k2 50 -kr 46 -k3 50 -kt 46 -bd 50 -bk 60 -b3 50 -b4 50 -lg 1 -gv 4 -x 1"
@@ -192,12 +192,14 @@ grabScan() {
 					if(RegExMatch(val, "\[(.*?)\]", &score)) {
 						_score := RegExMatch(score[1], "^-?\d+", &match) ? match[0] : ""
 						_sum := RegExMatch(score[1], ",s(\d+)", &match) ? match[1] : ""
+						_given := RegExMatch(score[1], ",(k\d+)", &match) ? match[1] : ""
+						_given .= RegExMatch(score[1], ",(x\d+)", &match) ? " " . match[1] : ""
 						_extra := RegExMatch(score[1], " (\D+)", &match) ? match[1] : ""
 					}
 					if(RegExMatch(val, "\#(.*?)\#", &cand)) {
 						scanOutput3.Add("", idx, cand[1] . " [" . _score . ",s" . _sum . " " . _extra . "]")
 					} else if(RegExMatch(val, "\[(.*?)\]", &score)) {
-						scanOutput2.Add("", idx, _score, _sum, _extra)				
+						scanOutput2.Add("", idx, _score, _sum, _given, _extra)				
 					}
 					if(InStr(val, "V") && InStr(val, "]"))
 						scanOutput3.Add("", idx, "V")
@@ -452,7 +454,7 @@ AddControls(["cd.3.Diagonal.1=pos, 2=neg", "cj.1.Disjoint.0 / 1", "ck.12.Fairy.X
 			"ce.1.Entropy.1 / 2", "cm.1.Modular.1 / 2", "cs.13.Sum.Sum", "cx.654.Row Sequence.xyz",
 			"cy.159.Col Sequence.xyz", "ca.4.Adjacent.abcd or n"])
 AddControls(["lg.0.Light.Quantity.", "gn.0.Givens.Quantity.", "gv.6.Given V.Min Quantity.", "gx.25.Given X.Min Quantity.",
-			" a..Remove Canditate.nAR"])
+			"gs.1.Skyscraper.Max Quantity.", " a..Remove Canditate.nAR"])
 
 paramText := myGui.Add("Text", "xs Section w700 h16 BackgroundWhite Border")
 paramText.SetFont("s8", "Consolas")
@@ -480,11 +482,12 @@ sampleBtn := myGui.Add("Button", "yp w80", "Sample")
 sampleBtn.OnEvent("Click", (*) => (Solve(0)))
 sampleCheck := myGui.Add("CheckBox", "yp ys4", "Auto-Sample")
 
-scanOutput2 := myGui.Add("ListView", "Section xs w240 h120", ["Index", "Score", "Sum", "Extra"])
+scanOutput2 := myGui.Add("ListView", "Section xs w240 h120", ["Index", "Score", "Sum", "Given", "Extra"])
 scanOutput2.ModifyCol(1, "Integer Left")
 scanOutput2.ModifyCol(2, 40)
 scanOutput2.ModifyCol(3, 40)
-scanOutput2.ModifyCol(4, 100)
+scanOutput2.ModifyCol(4, 40)
+scanOutput2.ModifyCol(5, 80)
 scanOutput2.OnEvent("Click", ListViewClick)
 scanOutput3 := myGui.Add("ListView", "ys w240 h120", ["Index", "Candidates"])
 scanOutput3.ModifyCol(1, "Integer Left")
@@ -496,28 +499,28 @@ indexList.OnEvent("Focus", ListBoxClick)
 
 myGui.Show("w720 h440")
 
-orgFile := "P:\Google_Drive\Projects\CodeBlocks\SudokuDots5\bin\Debug\SudokuDots5.exe"
-copyDir := "R:\"
-for n, GivenPath in A_Args  ; For each parameter (or file dropped onto a script):
-{
-    Loop Files, GivenPath, "FD"  ; Include files and directories.
-        LongPath := A_LoopFileFullPath
-	if (n = 1)
-	{
-		orgFile := LongPath
-		copyDir := ""
+copyDir := DirExist("R:\") ? "R:\" : ""
+if (SubStr(A_ScriptFullPath, -3) == "ahk") {
+	orgFile := "P:\Google_Drive\Projects\CodeBlocks\SudokuDots5\bin\Debug" . exe
+	if(copyDir == "R:\") {
+		FileCopy(orgFile, copyDir, 1)
+		exe := copyDir . exe
+	} else {
+		exe := orgFile
 	}
-	if (n = 2)
-		copyDir := LongPath
-}
-if (copyDir = "")
-{
-	exe := orgFile
-}
-else
-{
-	FileCopy(orgFile, copyDir, 1)
-	exe := copyDir . SubStr(orgFile, InStr(orgFile, "\", 0, -1) + 1)
+} else {
+	SplitPath(A_ScriptFullPath, &fileName, &fileDir)
+	orgFile := fileDir . exe
+	if(!FileExist(orgFile)) {
+		msgbox orgFile . " Not Found"
+		Exit
+	}
+	if(copyDir == "R:\") {
+		FileCopy(orgFile, copyDir, 1)
+		exe := copyDir . exe
+	} else {
+		exe := orgFile
+	}
 }
 
 paramText.Value := params
