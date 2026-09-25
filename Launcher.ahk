@@ -3,8 +3,10 @@ DetectHiddenWindows true
 
 exe := "\SudokuDots5.exe"
 
-params := "PAaoojgKcNtY -v 11 -d 45 -e 50 -s 1 -gs 4 -x 0"
-; params := "NnMqwQSUgIsN -v 11 -d 60 -e 50 -s 1 -x 0"
+; params := "QkSZkYvFetsU -v 12 -d 35 -e 60 -s 1 -cx 258 -cy 159 -gs 2 -x 370"
+; params := "PAaoojgKcNtY -v 11 -d 45 -e 50 -s 1 -gs 4 -x 0"
+params := "IXyvWLNAyrAm -v 11 -d 0 -e 0 -s 1 -k2 50 -ki 44 -k3 200 -kh 66 -x Index"
+; params := "NnMqwQSUgIsN -v 11 -d 60 -e 50 -s 1 -k1 15 -kb 44 -k2 15 -ki 44 -k3 20 -kt 44 -lu c3 -bx 100 -x 0"
 ; params := "OiLkdtEownzD -v 11 -d 30 -e 0 -k1 20 -ka 44 -k2 60 -kw 46 -k3 60 -kt 46 -lg 2 -gv 3 -gx 28"
 ; params := "StQwIZSLfguL -v 11 -d 30 -e 60 -k1 30 -ka 34 -k2 50 -kr 46 -k3 50 -kt 46 -bd 50 -bk 60 -b3 50 -b4 50 -lg 1 -gv 4 -x 1"
 ; params := "Wounstacn -v 11 -d 50 -e 50 -gn 5"
@@ -61,11 +63,11 @@ processText(mode, button, info := 0) {
     
     ; Loop through ALL controls and find Text controls
     for ctrl in parentGui {
-        if ctrl.Type = "Text" {
+        if ctrl.Type = "Edit" || ctrl.Type = "Text" {
             text := ctrl.Value
         }
     }
-    
+
     if (mode = "send") {
         ; Just copy filtered text and send to Chrome
         A_Clipboard := text
@@ -83,11 +85,37 @@ processText(mode, button, info := 0) {
 				filtered .= A_LoopField . "`n"
 			}
 		}
+		
+		; Keep the original separators (dots and spaces)
+		steps := ""
+		Loop Parse, text, A_Space
+		{
+			token := A_LoopField
+
+			if (InStr(token, "("))  ; Example condition
+				break  ; Breaks outer loop
+			pos := 1
+			
+			; Find all matches in the token
+			while (pos := RegExMatch(token, ".[\dH][BCR]\d{2}", &match, pos))
+			{
+				steps .= match[]
+				
+				; Check if there's a dot after this match (before next match or at end)
+				nextPos := pos + match.Len
+				if (nextPos <= StrLen(token) && SubStr(token, nextPos, 1) = ".")
+					steps .= "."
+				else steps .= " "
+				
+				pos := nextPos
+			}
+		}
 	
-	
-		if (mode = "url") {
+		if (SubStr(mode, 1, 3) = "url") {
 			; Create URL from filtered text
 			; Create a binary buffer for the UTF-8 bytes
+			if(mode == "urlSteps")
+				filtered := steps . filtered
 			buf := Buffer(StrPut(filtered, "UTF-8"))
 			StrPut(filtered, buf, "UTF-8")	
 			; Convert each byte to percent encoding if needed
@@ -141,18 +169,33 @@ Solve(tries) {
 			myGui2.Show("w1024")
 		} else {
 			myGui2 := Gui("-MinimizeBox")
-			urlButton := myGui2.Add("Button", "x50 Section w200", "URL")
-			urlButton.OnEvent("Click", processText.Bind("url"))	
+			urlFilteredButton := myGui2.Add("Button", "x50 Section w200", "Filtered URL")
+			urlFilteredButton.OnEvent("Click", processText.Bind("urlFiltered"))			
 			filterButton := myGui2.Add("Button", "ys xs225 w200", "Filter Steps")
 			filterButton.OnEvent("Click", processText.Bind("filter"))		
 			solveButton := myGui2.Add("Button", "ys xs450 w200", "Send")
 			solveButton.OnEvent("Click", processText.Bind("send"))
+			urlStepsButton := myGui2.Add("Button", "x50 Section w200", "Stepped URL")
+			urlStepsButton.OnEvent("Click", processText.Bind("urlSteps"))
 			myGui2.SetFont("s8", "Consolas") 
-			myGui2.Add("Text", "x10 w960", "Dots = " . StrLen(RegExReplace(result, "[^.]", "")))
+			myGui2.Add("Text", "ys xs230 y40 w960", "Dots = " . StrLen(RegExReplace(result, "[^.]", "")))
+			inScore := InStr(result, "score")
+			; Build the string using a loop
+			displayText := A_Tab . "["
+			for letter in ["E", "J", "K", "M", "P", "Q", "W"] {
+				StrReplace(substr(result, 1, inScore), letter, "", , &count)
+				displayText .= Format("{:" 3-StrLen(count) "}", "") . count
+				pos := InStr(result, letter)
+				value := (pos && pos < inScore) ? pos : 0
+				displayText .= letter . value . StrReplace(Format("{:" 4-StrLen(value) "}", ""), " ", " ")
+			}
+			displayText .= " ]"
+			myGui2.Add("Edit", "ys xs300 y40 w350 h16", displayText)
 			; Add text to the GUI. w350 sets the width of the text control.
-			myGui2.Add("Text", "w960", StrReplace(result, "&", "&&"))
+			myGui2.Add("Edit", "x10 Section w750 h400", StrReplace(result, "&", "&&"))
+			; myGui2.Add("Text", "w960", StrReplace(result, "&", "&&"))
 			; Display the GUI
-			myGui2.Show("w960")
+			myGui2.Show("w760")
 		}
 	}
 	Solved := 1
@@ -257,10 +300,11 @@ Param_Change(*) {
 	paramText.Value := strBase.Value
 	for p in controls {
 		if(SubStr(p.type, 1, 1) == " " && p.id != "a")	
-		; if(SubStr(p.type, 1, 1) == " ")
 			p.checkbox.Value := 1
 		if(p.checkbox.Value) {
 			val := p.edit.value
+			if(p.id != "a")
+				val := (val := RegExReplace(val, "^0+")) = "" ? "0" : val
 			if(val != "") {
 				paramText.Value .= " -" . (p.type != " " ? p.type : "") . p.id . " " . val
 			
@@ -372,10 +416,14 @@ AddControls(control) {
 		var1 := StrSplit(text, ".")[1]
 		var2 := StrSplit(text, ".")[2]
 
-		if(var1 == " a")
-			width := "w100"
+		if(var1 == " a" || var1 == "lu")
+			width := "w97"
 		else
-			width := StrLen(var2) > 8 ? "w60" : StrLen(var2) > 4 ? "w35" : "w25"
+			width := (len := StrLen(var2)) > 5 ? "w45"
+				   : len > 4 ? "w35"
+				   : len > 3 ? "w30"
+				   : "w25"
+
 			
 		if(indent == 1) {
 			indent := 0
@@ -439,14 +487,14 @@ Loop 9 {
 }
 
 AddControls([" v.11.Variant.", " d.50.Dots.Percent.", " e.50.Extended.Percent.", " s.1.First Digit.0 / 1"])
-AddControls(["k1.100.Quantity.Percent", "ka.44.Arrow Sum.", "kb.44.Between.", "kp.44.Split Pea.", "kq.44.Product Sum.", "kl.44.Lockout.", "ki.44.Index."])
+AddControls(["k1.100.Quantity.Percent", "ka.44.Arrow Sum.", "kb.44.Between.", "kp.44.Split Pea.", "kq.44.Product Sum.", "kl.44.Lockout."])
 AddControls(["k2.100.Quantity.Percent", "kr.44.Renban.", "kw.44.German Whisper.", "kd.44.Dutch Whisper.", 
 			"ky.44.Parity.", "km.44.Modular." , "ke.44.Entropy."])
-AddControls(["", "kz.44.Zipper.", "ks.44.Region Sum.", "kn.44.Nabner.", "kx.44.Ten.", "kf.44.Anti-Factor."])
-AddControls(["k3.100.Quantity.Percent.", "kt.44.Thermo."])
+AddControls(["", "kz.44.Zipper.", "ks.44.Region Sum.", "kn.44.Nabner.", "kx.44.Ten.", "kf.44.Anti-Factor.", "ki.44.Index."])
+AddControls(["k3.100.Quantity.Percent.", "kt.44.Thermo.", "kh.44.Haze."])
 AddControls(["lr.00000.Renban.DAaBbCc.", "lw.00000.German Whisper.DAaBbCc.", "ld.00000.Dutch Whisper.DAaBbCc.",
 			"lp.00000.Parity.DAaBbCc.", "lm.00000.Modular.DAaBbCc.", "le.00000.Entropy.DAaBbCc.",
-			"lz.00000.Zipper.DAaBbCc.", "lt.00000.Thermo.DAaBbCc."])
+			"lz.00000.Zipper.DAaBbCc.", "lt.00000.Thermo.DAaBbCc.", "lu.c3.Extra Region.nAR"])
 AddControls(["bd.100.Dots.Quantity.", "bk.100.Kropki.Quantity.", "bx.100.X.Quantity.", "bv.100.V.Quantity.",
 			"b2.100.Cage 2.Quantity.", "b3.100.Cage 3.Quantity.", "b4.100.Cage 4.Quantity.", 
 			"b5.100.Cage 5.Quantity.", "b6.100.Cage 6.Quantity.", "b7.100.Cage 7.Quantity."])
