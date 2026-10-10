@@ -4,7 +4,8 @@ DetectHiddenWindows true
 
 exe := "\SudokuDots5.exe"
 
-params := "WCixDtTdpXtC -v 12 -d 40 -e 60 -s 0 -k1 20 -kq 35 -bx 90 -lg 0 -gs 3"
+params := "ZiqTSIVwfdbC -v 11 -d 0 -e 50 -s 1 -k2 40 -kr 57 -k3 25 -kh 66 -b2 50"
+; params := "WCixDtTdpXtC -v 12 -d 40 -e 60 -s 0 -k1 20 -kq 35 -bx 90 -lg 0 -gs 3"
 ; params := "QiwgXGzbQmrG -v 12 -d 35 -e 60 -s 1 -cx 258 -cy 159 -gs 2"
 ; params := "IuUHZzsRLkal -v 11 -d 0 -e 20 -s 0 -ki 46 -kt 37 -b3 40 -ck 12 -lg 4 -gv 6"
 ; params := "AWnPMXPLOVJZ -v 11 -d 50 -e 0 -s 1 -k1 25 -kb 35 -k2 30 -kw 47 -bk 60 -cd 2 -lg 5 -gv 5"
@@ -42,11 +43,12 @@ captureScan(s) {
             cand := RegExMatch(val, "#(\d+)#", &match) ? match[1] : ""
             score := RegExMatch(val, "(\[.*?\])", &match) ? match[1] : ""
 			vees := InStr(score, "V")
+			zeds := InStr(score, "Z")
             
             if(cand) {
                 scanOutput2.Add(, s.params . " -x " . index, cand . " " . score)                             
             }
-			if(vees) {
+			if(vees || zeds) {
 				scanOutput2.Add(, s.params . " -x " . index, score)
 			}
 			if(InStr(score, "Q")) {

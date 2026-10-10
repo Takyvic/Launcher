@@ -182,7 +182,7 @@ Solve(tries) {
 			inScore := InStr(result, "score")
 			; Build the string using a loop
 			displayText := A_Tab . "["
-			for letter in ["E", "J", "K", "M", "P", "Q", "W"] {
+			for letter in ["E", "J", "K", "M", "P", "Q", "W", "Z"] {
 				StrReplace(substr(result, 1, inScore), letter, "", , &count)
 				displayText .= Format("{:" 3-StrLen(count) "}", "") . count
 				pos := InStr(result, letter)
